@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+.DS_Store
+
+# Keep only the frontend README tracked in this directory.
+/*.md
+!/README.md

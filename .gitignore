@@ -6,6 +6,9 @@
 cspell.json
 
 *lock*
+!/frontend/package-lock.json
+!/source/package-lock.json
+!/source/composer.lock
 *backup*
 
 # Keep only the main project README tracked at the repository root.

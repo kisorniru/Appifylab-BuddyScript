@@ -6,4 +6,3 @@ dist
 # Keep only the frontend README tracked in this directory.
 /*.md
 !/README.md
-!/API_CONTRACT.md

@@ -11,3 +11,4 @@ cspell.json
 # Keep only the main project README tracked at the repository root.
 /*.md
 !/README.md
+!/ASSESSMENT_DOCUMENTATION.md

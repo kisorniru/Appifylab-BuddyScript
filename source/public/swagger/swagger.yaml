@@ -1,0 +1,1068 @@
+swagger: '2.0'
+
+info:
+  title: BuddyScript API
+  version: 1.0.0
+  description: |
+    BuddyScript is a social feed system with user authentication, registration,
+    post creation, reactions, comments, and notification handling.
+
+    Quick headers:
+    - Public auth APIs: `X-Client-Key: base64:S0FZaUFwaURPTC1raXNvcm5pcnVAZ21haWw=`
+    - Logged-in APIs: `Authorization: Bearer {apiToken}`
+    - Optional language: `X-Language-Key: en` or `bn`
+
+    Main flow:
+    1. Register or login to receive `apiToken`.
+    2. Send `Authorization: Bearer {apiToken}` for feed, post, comment, reaction, and notification APIs.
+    3. Use logout APIs to revoke current or all user sessions.
+
+    Last updated: 16 June 2026.
+
+basePath: /api/v1
+schemes:
+  - http
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+tags:
+  - name: Auth
+    description: Authentication and token management.
+  - name: NewsFeed
+    description: Managing user feed, posts, comments, and reactions.
+  - name: Posts
+    description: Creating and managing posts.
+  - name: Notifications
+    description: Fetching and managing notifications.
+
+securityDefinitions:
+  clientKey:
+    type: apiKey
+    name: X-Client-Key
+    in: header
+    description: Use `base64:S0FZaUFwaURPTC1raXNvcm5pcnVAZ21haWw=` for public auth APIs.
+  sanctum:
+    type: apiKey
+    name: Authorization
+    in: header
+    description: Use `Bearer {apiToken}`.
+
+paths:
+  /user/auth/credential-key:
+    get:
+      tags:
+        - Auth
+      summary: Creates a temporary credential encryption key.
+      description: Returns a temporary RSA public key and credential key id. Use this before login or registration to encrypt password fields.
+      security:
+        - clientKey: []
+      x-middleware-names:
+        - throttle:20,1
+        - client.key
+      responses:
+        '200':
+          description: Credential key created.
+          schema:
+            $ref: '#/definitions/CredentialKeyResponse'
+        default:
+          description: Error payload.
+          schema:
+            $ref: '#/definitions/ErrorResult'
+
+  /user/login:
+    post:
+      tags:
+        - Auth
+      summary: Authenticates a user and returns an API token.
+      description: Authenticates a user and returns a Sanctum API token.
+      security:
+        - clientKey: []
+      x-middleware-names:
+        - throttle:5,1
+        - client.key
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/LoginRequest'
+      responses:
+        '200':
+          description: Login successful.
+          schema:
+            $ref: '#/definitions/LoginResponse'
+        default:
+          description: Error payload.
+          schema:
+            $ref: '#/definitions/ErrorResult'
+
+  /user/registration:
+    post:
+      tags:
+        - Auth
+      summary: Creates a new user account and returns an API token.
+      description: Creates a new user account and returns a Sanctum API token.
+      security:
+        - clientKey: []
+      x-middleware-names:
+        - throttle:5,1
+        - client.key
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/RegistrationRequest'
+      responses:
+        '200':
+          description: Registration successful.
+          schema:
+            $ref: '#/definitions/LoginResponse'
+        default:
+          description: Error payload.
+          schema:
+            $ref: '#/definitions/ErrorResult'
+
+  /user/social-login:
+    post:
+      tags:
+        - Auth
+      summary: Authenticates or creates a user through a social provider.
+      description: Logs in an existing social user or creates a new social account.
+      security:
+        - clientKey: []
+      x-middleware-names:
+        - throttle:15,1
+        - client.key
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/SocialLoginRequest'
+      responses:
+        '200':
+          description: Login successful.
+          schema:
+            $ref: '#/definitions/SocialLoginResponse'
+        default:
+          description: Error payload.
+          schema:
+            $ref: '#/definitions/ErrorResult'
+
+  /user/logout:
+    post:
+      tags:
+        - Auth
+      summary: Logs out the user from the current session.
+      description: Revokes the current API token.
+      security:
+        - sanctum: []
+      x-middleware-names:
+        - auth:sanctum
+      responses:
+        '200':
+          description: Logged out.
+          schema:
+            $ref: '#/definitions/SuccessResult'
+        default:
+          description: Error payload.
+          schema:
+            $ref: '#/definitions/ErrorResult'
+
+  /user/logout-all:
+    post:
+      tags:
+        - Auth
+      summary: Logs out the user from all active sessions.
+      description: Revokes all API tokens for the authenticated user.
+      security:
+        - sanctum: []
+      x-middleware-names:
+        - auth:sanctum
+      responses:
+        '200':
+          description: Logged out from all devices.
+          schema:
+            $ref: '#/definitions/SuccessResult'
+        default:
+          description: Error payload.
+          schema:
+            $ref: '#/definitions/ErrorResult'
+
+  /user/feed:
+    get:
+      tags:
+        - NewsFeed
+      summary: Returns the authenticated user's feed timeline.
+      description: Returns the authenticated user's paginated feed.
+      security:
+        - sanctum: []
+      x-middleware-names:
+        - auth:sanctum
+        - throttle:50,1
+      parameters:
+        - $ref: '#/parameters/Limit'
+        - $ref: '#/parameters/Cursor'
+      responses:
+        '200':
+          description: Feed fetched.
+          schema:
+            $ref: '#/definitions/FeedResponse'
+        default:
+          description: Error payload.
+          schema:
+            $ref: '#/definitions/ErrorResult'
+
+  /user/post:
+    post:
+      tags:
+        - Posts
+      summary: Creates a new text or media post.
+      description: Creates a text or media post for the authenticated user.
+      security:
+        - sanctum: []
+      x-middleware-names:
+        - auth:sanctum
+        - throttle:10,1
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: title
+          in: formData
+          required: false
+          type: string
+          maxLength: 255
+        - name: body
+          in: formData
+          required: true
+          type: string
+          maxLength: 5000
+        - name: visibility
+          in: formData
+          required: false
+          type: integer
+          enum:
+            - 1
+            - 2
+          default: 1
+          description: 1 public, 2 private.
+        - name: media
+          in: formData
+          required: false
+          type: file
+        - name: thumbnail
+          in: formData
+          required: false
+          type: file
+        - name: mediaUrl
+          in: formData
+          required: false
+          type: string
+        - name: thumbnailUrl
+          in: formData
+          required: false
+          type: string
+        - name: mediaType
+          in: formData
+          required: false
+          type: integer
+          enum:
+            - 1
+            - 2
+          description: 1 image, 2 video.
+      responses:
+        '200':
+          description: Post created.
+          schema:
+            $ref: '#/definitions/PostResponse'
+        default:
+          description: Error payload.
+          schema:
+            $ref: '#/definitions/ErrorResult'
+
+  /user/post/reaction:
+    post:
+      tags:
+        - Posts
+      summary: Adds, changes, or removes the user's reaction on a post.
+      description: Toggles the authenticated user's post reaction. Sending the same reaction again removes it.
+      security:
+        - sanctum: []
+      x-middleware-names:
+        - auth:sanctum
+        - throttle:30,1
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/PostReactionRequest'
+      responses:
+        '200':
+          description: Reaction updated.
+          schema:
+            $ref: '#/definitions/PostReactionResponse'
+        default:
+          description: Error payload.
+          schema:
+            $ref: '#/definitions/ErrorResult'
+
+  /user/post/reaction/user:
+    get:
+      tags:
+        - Posts
+      summary: Returns users who reacted to a post.
+      description: Returns a cursor-paginated list of post reactors with reaction type and reaction time.
+      security:
+        - sanctum: []
+      x-middleware-names:
+        - auth:sanctum
+        - throttle:50,1
+      parameters:
+        - name: postId
+          in: query
+          required: true
+          type: integer
+          minimum: 1
+        - $ref: '#/parameters/Limit'
+        - $ref: '#/parameters/Cursor'
+      responses:
+        '200':
+          description: Reaction users fetched.
+          schema:
+            $ref: '#/definitions/PostReactionUserResponse'
+        default:
+          description: Error payload.
+          schema:
+            $ref: '#/definitions/ErrorResult'
+
+  /user/post/comment:
+    get:
+      tags:
+        - Posts
+      summary: Returns comments or replies for a selected post.
+      description: Returns root comments for a post, or replies when `parentId` is provided.
+      security:
+        - sanctum: []
+      x-middleware-names:
+        - auth:sanctum
+        - throttle:50,1
+      parameters:
+        - name: postId
+          in: query
+          required: true
+          type: integer
+          minimum: 1
+        - name: parentId
+          in: query
+          required: false
+          type: integer
+          minimum: 1
+        - $ref: '#/parameters/Limit'
+        - $ref: '#/parameters/Cursor'
+      responses:
+        '200':
+          description: Comments fetched.
+          schema:
+            $ref: '#/definitions/CommentResponse'
+        default:
+          description: Error payload.
+          schema:
+            $ref: '#/definitions/ErrorResult'
+    post:
+      tags:
+        - Posts
+      summary: Creates a comment or reply on a selected post.
+      description: Creates a root comment or reply.
+      security:
+        - sanctum: []
+      x-middleware-names:
+        - auth:sanctum
+        - throttle:20,1
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/PostCommentRequest'
+      responses:
+        '200':
+          description: Comment created.
+          schema:
+            $ref: '#/definitions/PostCommentResponse'
+        default:
+          description: Error payload.
+          schema:
+            $ref: '#/definitions/ErrorResult'
+
+  /user/post/comment/reaction:
+    post:
+      tags:
+        - Posts
+      summary: Adds, changes, or removes the user's reaction on a comment.
+      description: Toggles the authenticated user's comment reaction.
+      security:
+        - sanctum: []
+      x-middleware-names:
+        - auth:sanctum
+        - throttle:30,1
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/CommentReactionRequest'
+      responses:
+        '200':
+          description: Reaction updated.
+          schema:
+            $ref: '#/definitions/CommentReactionResponse'
+        default:
+          description: Error payload.
+          schema:
+            $ref: '#/definitions/ErrorResult'
+
+  /user/post/comment/reaction/user:
+    get:
+      tags:
+        - Posts
+      summary: Returns users who reacted to a comment or reply.
+      description: Returns a cursor-paginated list of comment or reply reactors with reaction type and reaction time.
+      security:
+        - sanctum: []
+      x-middleware-names:
+        - auth:sanctum
+        - throttle:50,1
+      parameters:
+        - name: commentId
+          in: query
+          required: true
+          type: integer
+          minimum: 1
+        - $ref: '#/parameters/Limit'
+        - $ref: '#/parameters/Cursor'
+      responses:
+        '200':
+          description: Reaction users fetched.
+          schema:
+            $ref: '#/definitions/PostReactionUserResponse'
+        default:
+          description: Error payload.
+          schema:
+            $ref: '#/definitions/ErrorResult'
+
+  /user/notification:
+    get:
+      tags:
+        - Notifications
+      summary: Returns all or unread notifications for the user.
+      description: Returns notifications. Use `unreadOnly=true` to return only unread items.
+      security:
+        - sanctum: []
+      x-middleware-names:
+        - auth:sanctum
+        - throttle:50,1
+      parameters:
+        - $ref: '#/parameters/Limit'
+        - $ref: '#/parameters/Cursor'
+        - name: unreadOnly
+          in: query
+          required: false
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: Notifications fetched.
+          schema:
+            $ref: '#/definitions/NotificationResponse'
+        default:
+          description: Error payload.
+          schema:
+            $ref: '#/definitions/ErrorResult'
+
+  /user/notification/read:
+    post:
+      tags:
+        - Notifications
+      summary: Marks a selected notification as read.
+      description: Marks one notification as read and returns updated notification metadata.
+      security:
+        - sanctum: []
+      x-middleware-names:
+        - auth:sanctum
+        - throttle:30,1
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/NotificationReadRequest'
+      responses:
+        '200':
+          description: Notification updated.
+          schema:
+            $ref: '#/definitions/NotificationResponse'
+        default:
+          description: Error payload.
+          schema:
+            $ref: '#/definitions/ErrorResult'
+
+parameters:
+  Limit:
+    name: limit
+    in: query
+    required: false
+    type: integer
+    minimum: 1
+    maximum: 20
+    default: 10
+  Cursor:
+    name: cursor
+    in: query
+    required: false
+    type: integer
+    minimum: 1
+
+definitions:
+  CredentialKeyResponse:
+    type: object
+    properties:
+      code:
+        type: integer
+        example: 200
+      isSuccess:
+        type: boolean
+        example: true
+      message:
+        type: string
+        example: Credential key created
+      responseBody:
+        $ref: '#/definitions/CredentialKeyResponseBody'
+
+  CredentialKeyResponseBody:
+    type: object
+    properties:
+      credentialKeyId:
+        type: string
+        format: uuid
+        example: 8bb7f4b2-412c-4dd8-8ef2-c8a5a83d8d2c
+      publicKey:
+        type: string
+        example: "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...\n-----END PUBLIC KEY-----"
+      expiresIn:
+        type: integer
+        description: Credential key lifetime in seconds.
+        example: 60
+
+  LoginRequest:
+    type: object
+    required:
+      - email
+      - password
+    properties:
+      email:
+        type: string
+        format: email
+        example: temp-2@temporary.local
+      password:
+        type: string
+        example: Pa$$word
+
+  RegistrationRequest:
+    type: object
+    required:
+      - firstName
+      - email
+      - password
+      - passwordConfirm
+    properties:
+      firstName:
+        type: string
+        example: Martina
+      lastName:
+        type: string
+        example: Nader
+      email:
+        type: string
+        format: email
+        example: martina@example.com
+      password:
+        type: string
+        example: Pa$$word
+      passwordConfirm:
+        type: string
+        example: Pa$$word
+
+  SocialLoginRequest:
+    type: object
+    required:
+      - firstName
+      - email
+      - provider
+      - providerId
+    properties:
+      firstName:
+        type: string
+        example: Martina
+      lastName:
+        type: string
+        example: Nader
+      email:
+        type: string
+        format: email
+        example: martina@example.com
+      phone:
+        type: string
+        example: '+8801725156188'
+      provider:
+        type: string
+        example: google
+      providerId:
+        type: string
+        example: google-user-id-123
+
+  PostReactionRequest:
+    type: object
+    required:
+      - postId
+    properties:
+      postId:
+        type: integer
+        minimum: 1
+        example: 10
+      reactionType:
+        type: integer
+        enum:
+          - 1
+          - 2
+        default: 1
+        description: 1 like, 2 love.
+
+  PostCommentRequest:
+    type: object
+    required:
+      - postId
+      - body
+    properties:
+      postId:
+        type: integer
+        minimum: 1
+        example: 10
+      parentId:
+        type: integer
+        minimum: 1
+        example: 3
+      body:
+        type: string
+        maxLength: 2000
+        example: Nice post!
+
+  CommentReactionRequest:
+    type: object
+    required:
+      - commentId
+    properties:
+      commentId:
+        type: integer
+        minimum: 1
+        example: 5
+      reactionType:
+        type: integer
+        enum:
+          - 1
+          - 2
+        default: 1
+        description: 1 like, 2 love.
+
+  NotificationReadRequest:
+    type: object
+    required:
+      - notificationId
+    properties:
+      notificationId:
+        type: integer
+        minimum: 1
+        example: 12
+
+  SuccessResult:
+    type: object
+    required:
+      - code
+      - isSuccess
+      - message
+    properties:
+      code:
+        type: integer
+        example: 200
+      isSuccess:
+        type: boolean
+        example: true
+      message:
+        type: string
+        example: Success
+
+  ErrorResult:
+    type: object
+    required:
+      - code
+      - isSuccess
+      - message
+    properties:
+      code:
+        type: integer
+        example: 400
+      isSuccess:
+        type: boolean
+        example: false
+      message:
+        type: string
+        example: Error message
+      responseBody:
+        type: object
+
+  LoginResponse:
+    type: object
+    properties:
+      code:
+        type: integer
+        example: 200
+      isSuccess:
+        type: boolean
+        example: true
+      message:
+        type: string
+        example: Login successful
+      responseBody:
+        $ref: '#/definitions/LoginResponseBody'
+
+  SocialLoginResponse:
+    allOf:
+      - $ref: '#/definitions/LoginResponse'
+
+  LoginResponseBody:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 1
+      name:
+        type: string
+        example: Martina Nader
+      email:
+        type: string
+        format: email
+        example: martina@example.com
+      firstTimeLogin:
+        type: boolean
+        example: false
+      apiToken:
+        type: string
+        example: 1|token-value
+
+  FeedResponse:
+    type: object
+    properties:
+      code:
+        type: integer
+        example: 200
+      isSuccess:
+        type: boolean
+        example: true
+      message:
+        type: string
+        example: Feed fetched successfully
+      responseBody:
+        $ref: '#/definitions/FeedResponseBody'
+
+  PostResponse:
+    type: object
+    properties:
+      code:
+        type: integer
+        example: 200
+      isSuccess:
+        type: boolean
+        example: true
+      message:
+        type: string
+        example: Post created successfully
+      responseBody:
+        $ref: '#/definitions/FeedItem'
+
+  PostReactionResponse:
+    allOf:
+      - $ref: '#/definitions/PostResponse'
+
+  PostReactionUserResponse:
+    type: object
+    properties:
+      code:
+        type: integer
+        example: 200
+      isSuccess:
+        type: boolean
+        example: true
+      message:
+        type: string
+        example: Post reaction users fetched successfully
+      responseBody:
+        $ref: '#/definitions/PostReactionUserResponseBody'
+
+  PostReactionUserResponseBody:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          $ref: '#/definitions/PostReactionUserItem'
+      meta:
+        $ref: '#/definitions/PaginationMeta'
+
+  PostReactionUserItem:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 44
+      user:
+        $ref: '#/definitions/FeedAuthor'
+      reactionType:
+        type: integer
+        enum:
+          - 1
+          - 2
+        example: 1
+        description: 1 like, 2 love.
+      reactedAt:
+        type: string
+        format: date-time
+
+  CommentResponse:
+    type: object
+    properties:
+      code:
+        type: integer
+        example: 200
+      isSuccess:
+        type: boolean
+        example: true
+      message:
+        type: string
+        example: Comments fetched successfully
+      responseBody:
+        $ref: '#/definitions/CommentResponseBody'
+
+  PostCommentResponse:
+    type: object
+    properties:
+      code:
+        type: integer
+        example: 200
+      isSuccess:
+        type: boolean
+        example: true
+      message:
+        type: string
+        example: Comment created successfully
+      responseBody:
+        $ref: '#/definitions/CommentItem'
+
+  CommentReactionResponse:
+    allOf:
+      - $ref: '#/definitions/PostCommentResponse'
+
+  NotificationResponse:
+    type: object
+    properties:
+      code:
+        type: integer
+        example: 200
+      isSuccess:
+        type: boolean
+        example: true
+      message:
+        type: string
+        example: Notifications fetched successfully
+      responseBody:
+        $ref: '#/definitions/NotificationResponseBody'
+
+  FeedResponseBody:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          $ref: '#/definitions/FeedItem'
+      meta:
+        $ref: '#/definitions/PaginationMeta'
+
+  CommentResponseBody:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          $ref: '#/definitions/CommentItem'
+      meta:
+        $ref: '#/definitions/PaginationMeta'
+
+  NotificationResponseBody:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          $ref: '#/definitions/NotificationItem'
+      meta:
+        $ref: '#/definitions/PaginationMeta'
+
+  PaginationMeta:
+    type: object
+    properties:
+      next_cursor:
+        type: integer
+        x-nullable: true
+        example: 15
+      has_more:
+        type: boolean
+        example: true
+      unread_count:
+        type: integer
+        description: Present on notification responses.
+        example: 3
+
+  FeedItem:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 1
+      postId:
+        type: integer
+        example: 10
+      author:
+        $ref: '#/definitions/FeedAuthor'
+      text:
+        type: string
+        example: Hello, this is my first post.
+      image:
+        type: string
+        x-nullable: true
+        example: https://example.com/post.webp
+      postType:
+        type: integer
+        example: 2
+      visibility:
+        type: integer
+        example: 1
+      reactionCount:
+        type: integer
+        example: 12
+      reactors:
+        type: array
+        items:
+          $ref: '#/definitions/FeedAuthor'
+      commentCount:
+        type: integer
+        example: 4
+      shareCount:
+        type: integer
+        example: 0
+      viewerReaction:
+        type: integer
+        x-nullable: true
+        example: 1
+      createdAt:
+        type: string
+        format: date-time
+
+  FeedAuthor:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 2
+      name:
+        type: string
+        example: Erin Brekke Jr.
+      avatar:
+        type: string
+        x-nullable: true
+        example: profile.png
+
+  CommentItem:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 1
+      postId:
+        type: integer
+        example: 10
+      parentId:
+        type: integer
+        x-nullable: true
+        example: 3
+      author:
+        $ref: '#/definitions/FeedAuthor'
+      body:
+        type: string
+        example: Nice post!
+      media:
+        type: array
+        items:
+          type: object
+      reactionCount:
+        type: integer
+        example: 2
+      reactors:
+        type: array
+        items:
+          $ref: '#/definitions/FeedAuthor'
+      replyCount:
+        type: integer
+        example: 1
+      viewerReaction:
+        type: integer
+        x-nullable: true
+        example: 1
+      createdAt:
+        type: string
+        format: date-time
+
+  NotificationItem:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 12
+      type:
+        type: string
+        example: post_reacted
+      sender:
+        $ref: '#/definitions/FeedAuthor'
+      message:
+        type: string
+        example: Erin Brekke Jr. loved your post.
+      notifiableType:
+        type: string
+        example: post
+      notifiableId:
+        type: integer
+        example: 10
+      data:
+        type: object
+      isRead:
+        type: boolean
+        example: false
+      readAt:
+        type: string
+        format: date-time
+        x-nullable: true
+      createdAt:
+        type: string
+        format: date-time

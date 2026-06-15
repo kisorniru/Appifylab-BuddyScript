@@ -1,0 +1,13 @@
+SetEnvIf X-Forwarded-For 202.229.68.106 hiroshima_ip
+SetEnvIf X-Forwarded-For 152.165.121.156 tokyo_ip
+SetEnvIf X-Forwarded-For 119.148.17.118 dahka_ip1
+SetEnvIf X-Forwarded-For 202.53.168.66 dahka_ip2
+
+# Make it so that only specific accesses are rejected. / 特定のアクセス先以外は弾くようにする
+order deny,allow
+deny from all
+allow from 192.168.33.
+allow from env=hiroshima_ip
+allow from env=tokyo_ip
+allow from env=dahka_ip1
+allow from env=dahka_ip2

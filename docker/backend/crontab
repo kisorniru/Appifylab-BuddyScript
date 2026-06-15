@@ -1,0 +1,6 @@
+
+# Laravel scheduler (every minute)
+* * * * * ec2-user cd /var/www/html/buddyscript && /usr/local/bin/php artisan schedule:run >> /dev/null 2>&1
+
+# Logrotate for laravel-queue.log (daily at midnight)
+0 0 * * * ec2-user /docker/backend/logrotate-cron.sh > /dev/null 2>&1

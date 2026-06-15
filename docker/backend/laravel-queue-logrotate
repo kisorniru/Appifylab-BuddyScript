@@ -1,0 +1,7 @@
+/var/www/html/buddyscript/storage/logs/laravel-queue.log {
+    daily
+    missingok
+    rotate 14
+    notifempty
+    copytruncate
+}

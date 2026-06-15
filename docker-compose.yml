@@ -1,0 +1,117 @@
+services:
+  nginx:
+    image: nginx:stable-alpine
+    container_name: buddyscript_nginx
+    volumes:
+      - ./docker/nginx:/etc/nginx/conf.d
+      - ./source:/var/www/html/buddyscript
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    depends_on:
+      - php
+    networks:
+      - buddyscript-network
+
+  db:
+    image: postgres:16
+    container_name: buddyscript_db
+    volumes:
+      - ./docker/db/initdb.d:/docker-entrypoint-initdb.d
+      - db-volume:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: buddyscript_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: UTC
+    ports:
+      - "54532:5432"
+    restart: unless-stopped
+    networks:
+      - buddyscript-network
+
+  php:
+    build: ./docker/php
+    container_name: buddyscript_php
+    volumes:
+      - ./source:/var/www/html/buddyscript
+    working_dir: /var/www/html/buddyscript
+    restart: unless-stopped
+    stdin_open: true
+    tty: false
+    networks:
+      - buddyscript-network
+
+  composer:
+    image: composer:2
+    container_name: buddyscript_composer
+    volumes:
+      - ./source:/var/www/html/buddyscript
+    working_dir: /var/www/html/buddyscript
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    command: ["init"]
+    depends_on:
+      - php
+    networks:
+      - buddyscript-network
+
+  cron:
+    build:
+      context: .
+      dockerfile: ./docker/backend/cron.dockerfile
+    container_name: buddyscript_cron
+    volumes:
+      - ./source:/var/www/html/buddyscript
+    restart: unless-stopped
+    depends_on:
+      - php
+    networks:
+      - buddyscript-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: buddyscript_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - buddyscript-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./docker/frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8080/api/v1
+    container_name: buddyscript_frontend
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    networks:
+      - buddyscript-network
+
+  admin-vite:
+    image: node:20-alpine
+    container_name: buddyscript_admin_vite
+    volumes:
+      - ./source:/app
+      - backend-node-modules:/app/node_modules
+    working_dir: /app
+    environment:
+      VITE_DEV_SERVER_URL: ${VITE_ADMIN_DEV_SERVER_URL:-http://localhost:5174}
+    ports:
+      - "5174:5174"
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5174"
+    restart: unless-stopped
+    networks:
+      - buddyscript-network
+
+networks:
+  buddyscript-network:
+
+volumes:
+  db-volume:
+  backend-node-modules:

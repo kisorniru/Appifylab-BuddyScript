@@ -19,7 +19,7 @@ class UserFactory extends Factory
             'first_name' => $this->faker->firstName(),
             'last_name' => $this->faker->lastName(),
             'name' => $this->faker->name(),
-            'email' => 'temp-'.$this->faker->unique()->uuid().'@temporary.local',
+            'email' => 'temp-'.$this->faker->unique()->uuid().'@user.com',
             'email_verified_at' => now(),
             'password' => bcrypt('Pa$$word'),
             'phone' => $this->faker->phoneNumber(),

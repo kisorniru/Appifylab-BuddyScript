@@ -15,7 +15,7 @@ class AdminUserSeeder extends Seeder
     public function run(): void
     {
         User::updateOrCreate(
-            ['email' => 'admin@buddyscript.us'],
+            ['email' => 'admin@user.com'],
             [
                 'name' => 'Admin User',
                 'email_verified_at' => Carbon::now(),

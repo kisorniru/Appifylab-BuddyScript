@@ -13,11 +13,11 @@ class UserSeeder extends Seeder
     {
         $faker = Faker::create();
 
-        User::factory()->count(2)->create([
+        User::factory()->count(5)->create([
             'is_admin' => AdminUser::FALSE,
         ]);
 
-        User::factory()->social()->count(2)->create([
+        User::factory()->social()->count(5)->create([
             'is_admin' => AdminUser::FALSE,
         ]);
     }

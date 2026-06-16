@@ -20,7 +20,7 @@ BuddyScript is a Dockerized Laravel API and React social feed application built 
 - Full comment/reply reactors popup.
 - Notifications for post comments, replies, post reactions, and comment reactions.
 - Swagger API documentation at `source/public/swagger/swagger.yaml`.
-- API documentation is password protected, where username : `developer` and password : `password`
+- API documentation is password protected, where username : `developer` and password : `password123`
 
 ## Tech Stack
 

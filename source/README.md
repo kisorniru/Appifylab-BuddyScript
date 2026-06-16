@@ -15,7 +15,7 @@ This directory contains the Laravel API for BuddyScript. It owns authentication,
 - Notifications for post comments, post reactions, comment replies, and comment reactions.
 - Validation messages under `lang/en/validation`.
 - Swagger contract at `public/swagger/swagger.yaml`.
-- Swagger is protected with username : `developer` and password : `password`
+- Swagger is protected with username : `developer` and password : `password123`
 
 ## Tech Stack
 

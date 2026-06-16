@@ -20,7 +20,6 @@ BuddyScript is a Dockerized Laravel API and React social feed application built 
 - Full comment/reply reactors popup.
 - Notifications for post comments, replies, post reactions, and comment reactions.
 - Swagger API documentation at `source/public/swagger/swagger.yaml`.
-- API documentation is password protected, where username : `developer` and password : `password123`
 
 ## Tech Stack
 
@@ -28,6 +27,23 @@ BuddyScript is a Dockerized Laravel API and React social feed application built 
 - Backend: Laravel, Sanctum, PostgreSQL, Redis
 - Runtime: Docker Compose, Nginx, PHP-FPM
 - API docs: Swagger/OpenAPI 2.0
+
+## Documentation
+
+- Detailed architecture and implementation decisions are available in:
+    [GPROJECT_ARCHITECTURE_AND_DECISIONS.md](PROJECT_ARCHITECTURE_AND_DECISIONS.md)
+
+## Live URLs
+
+```txt
+React frontend:      https://13.207.253.106/
+Laravel API:         https://13.207.253.106:8080/api/v1
+API Documentation:   https://13.207.253.106:8080/swagger/
+PostgreSQL host:     https://13.207.253.106:54532
+Redis host:          https://13.207.253.106:6379
+```
+
+- API documentation is password protected, please use `developer` as username and `password123` for password
 
 ## Local URLs
 
@@ -38,6 +54,12 @@ API Documentation:   http://localhost:8080/swagger/
 PostgreSQL host:     localhost:54532
 Redis host:          localhost:6379
 ```
+
+## Video Walkthrough
+
+- Youtube:             [https://youtu.be/uTjQpFhKJPQ](https://youtu.be/uTjQpFhKJPQ)
+- Google Drive Link:   [https://drive.google.com/file/d/1ZP7Y5PLJYqgSRxn9dqIyg5Ng1nGao30l/view](https://drive.google.com/file/d/1ZP7Y5PLJYqgSRxn9dqIyg5Ng1nGao30l/view)
+
 
 ## Run With Docker
 
